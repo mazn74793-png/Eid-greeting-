@@ -634,23 +634,31 @@ function reveal(ids,cls='on'){
 }
 
 // Section reveal helpers
-function revealClass(sel){
-  document.querySelectorAll(sel).forEach(el=>{
-    const ob=new IntersectionObserver(en=>{
-      en.forEach(e=>{if(e.isIntersecting)e.target.classList.add('on');});
-    },{threshold:.05, rootMargin:'0px 0px -40px 0px'});
-    ob.observe(el);
+const sels=['.big-reveal','.s2-line','.s3-label','.ka7ka','.s4-top','.s4-msg','.s4-from','.s4-hearts'];
+
+function revealAll(){
+  sels.forEach(sel=>{
+    document.querySelectorAll(sel).forEach(el=>{
+      const r=el.getBoundingClientRect();
+      if(r.top < window.innerHeight+60){
+        el.classList.add('on');
+        return;
+      }
+      const ob=new IntersectionObserver(en=>{
+        en.forEach(e=>{
+          if(e.isIntersecting){
+            e.target.classList.add('on');
+            ob.unobserve(e.target);
+          }
+        });
+      },{threshold:0,rootMargin:'0px 0px -20px 0px'});
+      ob.observe(el);
+    });
   });
 }
 
-revealClass('.big-reveal');
-revealClass('.s2-line');
-revealClass('.s3-label');
-revealClass('.ka7ka');
-revealClass('.s4-top');
-revealClass('.s4-msg');
-revealClass('.s4-from');
-revealClass('.s4-hearts');
+window.addEventListener('load', revealAll);
+window.addEventListener('scroll', revealAll, {passive:true});
 
 // ==================== TAKBEER AUTO ====================
 const audio = document.getElementById('takbeer-audio');
