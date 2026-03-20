@@ -635,7 +635,7 @@ function revealClass(sel){
   document.querySelectorAll(sel).forEach(el=>{
     const ob=new IntersectionObserver(en=>{
       en.forEach(e=>{if(e.isIntersecting)e.target.classList.add('on');});
-    },{threshold:.2});
+    },{threshold:.05, rootMargin:'0px 0px -40px 0px'});
     ob.observe(el);
   });
 }
