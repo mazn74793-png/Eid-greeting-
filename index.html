@@ -17,6 +17,11 @@
      Sources: threejs.org examples, condensed for single-file deploy.
 ══════════════════════════════════════════════════════════════ -->
 <script>
+/* ---------- THREE.Pass (base class — missing from three.min.js) ---------- */
+THREE.Pass=function(){this.enabled=true;this.needsSwap=true;this.clear=false;this.renderToScreen=false;};
+THREE.Pass.prototype={constructor:THREE.Pass,setSize:function(){},render:function(){console.error('THREE.Pass: .render() must be implemented in derived pass.');}};
+THREE.Pass.FullScreenQuad=(function(){var camera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);var geometry=new THREE.BufferGeometry();var float32Array=new Float32Array([-1,-1,0,1,-1,0,1,1,0,-1,1,0]);geometry.setAttribute('position',new THREE.BufferAttribute(float32Array,3));geometry.setAttribute('normal',new THREE.BufferAttribute(new Float32Array([0,0,1,0,0,1,0,0,1,0,0,1]),3));geometry.setAttribute('uv',new THREE.BufferAttribute(new Float32Array([0,0,1,0,1,1,0,1]),2));geometry.setIndex(new THREE.BufferAttribute(new Uint16Array([0,1,2,0,2,3]),1));var _mesh=new THREE.Mesh(geometry);return function FullScreenQuad(material){this._mesh=new THREE.Mesh(geometry,material);};function FullScreenQuad(material){this._mesh=new THREE.Mesh(geometry,material);}FullScreenQuad.prototype={constructor:FullScreenQuad,dispose:function(){this._mesh.geometry.dispose();},get material(){return this._mesh.material;},set material(v){this._mesh.material=v;},render:function(renderer){renderer.render(this._mesh,camera);}};return FullScreenQuad;})();
+
 /* ---------- CopyShader ---------- */
 THREE.CopyShader={uniforms:{tDiffuse:{value:null},opacity:{value:1}},
 vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
@@ -490,16 +495,23 @@ const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 300)
 camera.position.set(0,22,42);
 
 // ── Init EffectComposer AFTER scene + camera exist ────────────
-composer = new THREE.EffectComposer(renderer);
-composer.addPass(new THREE.RenderPass(scene, camera));
-bloomPass = new THREE.UnrealBloomPass(
-  new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.4, 0.72);
-composer.addPass(bloomPass);
-dofPass = new THREE.ShaderPass(DOFShader);
-composer.addPass(dofPass);
-vigPass = new THREE.ShaderPass(VignetteShader);
-vigPass.renderToScreen = true;
-composer.addPass(vigPass);
+let useComposer = false;
+try {
+  composer = new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  bloomPass = new THREE.UnrealBloomPass(
+    new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.4, 0.72);
+  composer.addPass(bloomPass);
+  dofPass = new THREE.ShaderPass(DOFShader);
+  composer.addPass(dofPass);
+  vigPass = new THREE.ShaderPass(VignetteShader);
+  vigPass.renderToScreen = true;
+  composer.addPass(vigPass);
+  useComposer = true;
+} catch(e) {
+  console.warn('PostProcessing init failed, using plain renderer:', e);
+  useComposer = false;
+}
 
 /* ────────────────────────────────────────────────────────────────
    SECTION D · SOUND SYSTEM (Web Audio API)
@@ -1292,10 +1304,12 @@ function updateSceneMeta(t, dt){
   atmState.dof     =lerp(atmState.dof,     cfg.dof,      sp);
 
   // Apply to post-processing
-  bloomPass.strength  = atmState.bloomStr;
-  bloomPass.radius    = atmState.bloomRad;
-  bloomPass.threshold = atmState.bloomThr;
-  dofPass.uniforms.blur.value = atmState.dof;
+  if(useComposer && bloomPass){
+    bloomPass.strength  = atmState.bloomStr;
+    bloomPass.radius    = atmState.bloomRad;
+    bloomPass.threshold = atmState.bloomThr;
+    dofPass.uniforms.blur.value = atmState.dof;
+  }
   scene.fog.density = atmState.fog;
   renderer.toneMappingExposure = atmState.exp;
   document.getElementById('vignette-drama').style.opacity = atmState.drama.toFixed(3);
@@ -1406,7 +1420,11 @@ function animate(){
   key.position.x=Math.sin(globalT*0.22)*2.2+4;
 
   // ── Render ───────────────────────────────────────────────────
-  composer.render();
+  if (useComposer) {
+    try { composer.render(); } catch(e) { useComposer=false; renderer.render(scene,camera); }
+  } else {
+    renderer.render(scene, camera);
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -1430,8 +1448,10 @@ tickCursor();
 window.addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
-  composer.setSize(innerWidth,innerHeight);
-  bloomPass.setSize(innerWidth,innerHeight);
+  if(useComposer){
+    composer.setSize(innerWidth,innerHeight);
+    bloomPass.setSize(innerWidth,innerHeight);
+  }
 });
 
 /* ────────────────────────────────────────────────────────────────
