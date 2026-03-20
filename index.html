@@ -1,843 +1,688 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>عيد مبارك — Mazen</title>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>عيد الفطر المبارك</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-
 <style>
 :root {
-  --gold: #D4AF37;
-  --gold-light: #F5D97D;
-  --gold-dim: #8B6914;
-  --dark: #070503;
+  --cream:   #FDF7EF;
+  --cream2:  #F5E8D4;
+  --blush:   #F9DDD0;
+  --sage:    #D4EAE0;
+  --sand:    #E8C99A;
+  --gold:    #C89020;
+  --gold2:   #E8B84B;
+  --brown:   #8B5E3C;
+  --text:    #3D2314;
+  --muted:   #7A5240;
+  --white:   #FFFCF7;
 }
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-html { scroll-behavior:auto; }
-body { background:#000; overflow-x:hidden; cursor:none; }
-
-/* ── Canvas bloom: CSS filter on the canvas itself ─────────── */
-#c {
-  position:fixed; inset:0; width:100vw; height:100vh;
-  z-index:1; display:block;
-  /* This is the "bloom" — a soft glow layer rendered via CSS */
-  filter: contrast(1.08) saturate(1.15);
-}
-
-/* ── Bloom glow layer (second canvas, blurred and composited) ── */
-#bloom-canvas {
-  position:fixed; inset:0; width:100vw; height:100vh;
-  z-index:2; display:block; pointer-events:none;
-  filter: blur(14px) brightness(1.6) saturate(1.5);
-  opacity:0.45; mix-blend-mode:screen;
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--cream);
+  font-family:'Tajawal',sans-serif;
+  color:var(--text);
+  overflow-x:hidden;
+  cursor:none;
 }
 
-#scroll-space { height:700vh; position:relative; z-index:3; pointer-events:none; }
-
-/* ── Vignette ─────────────────────────────────────────────── */
-#vignette {
-  position:fixed; inset:0; z-index:4; pointer-events:none;
-  background:radial-gradient(ellipse 85% 85% at 50% 50%,
-    transparent 30%, rgba(0,0,0,0.45) 68%, rgba(0,0,0,0.90) 100%);
+/* custom cursor */
+#cursor{
+  position:fixed;width:12px;height:12px;
+  background:var(--gold);border-radius:50%;
+  pointer-events:none;z-index:9999;
+  transform:translate(-50%,-50%);
+  transition:width .2s,height .2s,opacity .2s;
+  mix-blend-mode:multiply;
 }
-#vignette-drama {
-  position:fixed; inset:0; z-index:4; pointer-events:none;
-  background:radial-gradient(ellipse 65% 65% at 50% 50%,
-    transparent 20%, rgba(0,0,0,0.0) 45%, rgba(0,0,0,0.95) 100%);
-  opacity:0; transition:opacity 1.4s ease;
-}
-
-/* ── Film grain ───────────────────────────────────────────── */
-body::after {
-  content:''; position:fixed; inset:0; z-index:8;
-  pointer-events:none; opacity:0.035;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size:256px; animation:grain .5s steps(2) infinite;
-}
-@keyframes grain {
-  0%{transform:translate(0,0)} 25%{transform:translate(-2%,-1%)}
-  50%{transform:translate(1%,2%)} 75%{transform:translate(-1%,1%)}
-  100%{transform:translate(2%,-2%)}
+#cursor-ring{
+  position:fixed;width:36px;height:36px;
+  border:1.5px solid var(--gold);border-radius:50%;
+  pointer-events:none;z-index:9998;
+  transform:translate(-50%,-50%);
+  transition:transform .12s ease,width .3s,height .3s;
+  opacity:.5;
 }
 
-/* ── Custom cursor ────────────────────────────────────────── */
-#cursor {
-  position:fixed; width:8px; height:8px; background:var(--gold);
-  border-radius:50%; pointer-events:none; z-index:9999;
-  transform:translate(-50%,-50%); mix-blend-mode:difference;
-}
-#cursor-ring {
-  position:fixed; width:32px; height:32px;
-  border:1px solid rgba(212,175,55,0.5); border-radius:50%;
-  pointer-events:none; z-index:9998; transform:translate(-50%,-50%);
-  transition:width .3s,height .3s,border-color .2s;
+/* THREE canvas */
+#c3{
+  position:fixed;inset:0;
+  width:100%;height:100%;
+  z-index:0;pointer-events:none;
 }
 
-/* ── Loading ───────────────────────────────────────────────── */
-#loading {
-  position:fixed; inset:0; background:#000; z-index:200;
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:24px;
-}
-.load-presents {
-  font-family:'Cormorant Garamond',serif; font-weight:300; font-style:italic;
-  font-size:clamp(13px,2vw,16px); color:rgba(212,175,55,0.7);
-  letter-spacing:10px; text-transform:uppercase; opacity:0;
-}
-.load-title {
-  font-family:'Amiri',serif; font-size:clamp(32px,6vw,56px);
-  color:var(--gold); opacity:0; letter-spacing:4px;
-  text-shadow:0 0 40px rgba(212,175,55,0.7);
-}
-.load-bar-wrap { width:180px; height:1px; background:rgba(212,175,55,0.15); overflow:hidden; opacity:0; }
-.load-bar { height:100%; width:0%; background:linear-gradient(90deg,var(--gold-dim),var(--gold),var(--gold-light)); }
-
-/* ── Scene label ──────────────────────────────────────────── */
-#scene-label {
-  position:fixed; top:28px; left:50%; transform:translateX(-50%);
-  z-index:20; text-align:center; pointer-events:none; opacity:0;
-}
-.scene-num {
-  font-family:'Cormorant Garamond',serif; font-weight:300;
-  font-size:10px; color:rgba(212,175,55,0.4); letter-spacing:6px;
-  text-transform:uppercase; display:block;
-}
-.scene-name {
-  font-family:'Cormorant Garamond',serif; font-weight:400; font-style:italic;
-  font-size:13px; color:rgba(212,175,55,0.6); letter-spacing:4px;
-  text-transform:uppercase; display:block; margin-top:3px;
+/* ======================== HERO ======================== */
+.hero{
+  position:relative;z-index:1;
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;
+  padding:2rem;
+  overflow:hidden;
 }
 
-/* ── Dots ─────────────────────────────────────────────────── */
-#dots {
-  position:fixed; right:28px; top:50%; transform:translateY(-50%);
-  z-index:20; display:flex; flex-direction:column; gap:14px; opacity:0;
-}
-.dot { width:3px; height:3px; border-radius:50%; background:rgba(212,175,55,0.25); transition:all .4s; }
-.dot.active { background:var(--gold); box-shadow:0 0 6px var(--gold); height:18px; border-radius:2px; }
-
-/* ── Scroll hint ──────────────────────────────────────────── */
-#scroll-hint {
-  position:fixed; bottom:36px; left:50%; transform:translateX(-50%);
-  z-index:20; display:flex; flex-direction:column; align-items:center;
-  gap:10px; opacity:0; pointer-events:none;
-}
-.sh-text { font-family:'Cormorant Garamond',serif; font-size:10px; color:rgba(212,175,55,0.45); letter-spacing:5px; text-transform:uppercase; }
-.sh-line { width:1px; height:36px; background:linear-gradient(to bottom,rgba(212,175,55,0.5),transparent); animation:shp 2.2s ease-in-out infinite; }
-@keyframes shp { 0%,100%{opacity:.3} 50%{opacity:1} }
-
-/* ── Message overlay ──────────────────────────────────────── */
-#msg-overlay {
-  position:fixed; inset:0; z-index:15;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  pointer-events:none; opacity:0;
-}
-.msg-divider { width:60px; height:1px; background:linear-gradient(90deg,transparent,var(--gold),transparent); opacity:0; margin:16px 0; }
-.msg-main {
-  font-family:'Amiri',serif; font-size:clamp(52px,9vw,100px); font-weight:700;
-  color:var(--gold); text-align:center; line-height:1.2; opacity:0;
-  transform:translateY(24px); letter-spacing:4px;
-  text-shadow:0 0 40px rgba(212,175,55,1),0 0 80px rgba(212,175,55,0.6),0 0 160px rgba(212,175,55,0.3);
-  animation:goldpulse 3s ease-in-out infinite;
-}
-@keyframes goldpulse {
-  0%,100%{ text-shadow:0 0 40px rgba(212,175,55,1),0 0 80px rgba(212,175,55,.6),0 0 160px rgba(212,175,55,.3); }
-  50%    { text-shadow:0 0 70px rgba(255,220,80,1),0 0 130px rgba(212,175,55,.9),0 0 220px rgba(212,175,55,.5); }
-}
-.msg-sub {
-  font-family:'Amiri',serif; font-size:clamp(22px,4vw,40px); font-weight:400;
-  color:rgba(245,217,125,.85); text-align:center; opacity:0; transform:translateY(18px); letter-spacing:2px;
-}
-.msg-from {
-  font-family:'Cormorant Garamond',serif; font-weight:300; font-style:italic;
-  font-size:clamp(13px,2vw,17px); color:rgba(212,175,55,.45);
-  letter-spacing:8px; text-transform:uppercase; opacity:0; margin-top:4px;
+/* subtle dot grid bg */
+.hero::before{
+  content:'';
+  position:absolute;inset:0;
+  background-image:radial-gradient(circle,rgba(200,144,32,.12) 1px,transparent 1px);
+  background-size:32px 32px;
+  z-index:-1;
 }
 
-/* ── Slow-mo badge ────────────────────────────────────────── */
-#slowmo {
-  position:fixed; top:50%; right:36px; transform:translateY(-50%);
-  z-index:20; font-family:'Cormorant Garamond',serif; font-style:italic;
-  font-size:10px; color:rgba(212,175,55,0.4); letter-spacing:5px;
-  text-transform:uppercase; opacity:0; pointer-events:none;
-  writing-mode:vertical-rl; transition:opacity .6s;
+.hero-chip{
+  font-size:11px;letter-spacing:6px;
+  text-transform:uppercase;color:var(--gold);
+  border:1px solid rgba(200,144,32,.3);
+  padding:.4rem 1.2rem;border-radius:100px;
+  margin-bottom:2rem;
+  opacity:0;animation:riseIn .8s ease .2s forwards;
 }
 
-/* ── Mute btn ─────────────────────────────────────────────── */
-#mute-btn {
-  position:fixed; bottom:28px; right:28px; z-index:20;
-  background:none; border:1px solid rgba(212,175,55,0.25);
-  color:rgba(212,175,55,0.5); width:36px; height:36px; border-radius:50%;
-  font-size:14px; cursor:none; opacity:0; transition:opacity .5s;
-  display:flex; align-items:center; justify-content:center;
+.hero-title{
+  font-family:'Amiri',serif;
+  font-size:clamp(68px,16vw,148px);
+  font-weight:700;line-height:.9;
+  color:var(--text);
+  text-shadow:
+    1px 1px 0 #D4A878,
+    2px 2px 0 #C89060,
+    3px 3px 0 #B87848,
+    4px 4px 0 #A86838,
+    5px 5px 0 #985830,
+    6px 6px 0 #884828,
+    8px 8px 20px rgba(100,50,20,.18);
+  opacity:0;animation:riseIn 1.1s cubic-bezier(.16,1,.3,1) .5s forwards;
+  transform-origin:center bottom;
 }
 
-/* ── Name hint ────────────────────────────────────────────── */
-#name-hint {
-  position:fixed; top:20px; right:28px; z-index:20;
-  font-family:'Cormorant Garamond',serif; font-size:10px;
-  color:rgba(212,175,55,0.2); letter-spacing:2px; opacity:0; pointer-events:none;
+.hero-en{
+  font-family:'Tajawal',sans-serif;
+  font-weight:300;
+  font-size:clamp(13px,3vw,22px);
+  letter-spacing:10px;
+  color:var(--muted);
+  margin-top:1.2rem;
+  opacity:0;animation:riseIn .9s ease .9s forwards;
+  text-transform:uppercase;
 }
 
-@media(max-width:600px){
-  #dots{right:14px}
-  .msg-main{font-size:clamp(36px,11vw,72px)}
-  .msg-sub{font-size:clamp(18px,5vw,30px)}
-  #slowmo,#mute-btn{display:none}
-  #bloom-canvas{display:none}
+.divider{
+  display:flex;align-items:center;gap:16px;
+  width:260px;max-width:85vw;
+  margin:2rem auto 0;
+  opacity:0;animation:riseIn .7s ease 1.1s forwards;
 }
+.divider::before,.divider::after{
+  content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+.divider-gem{
+  width:8px;height:8px;
+  background:var(--gold);
+  transform:rotate(45deg);
+  box-shadow:0 0 8px rgba(200,144,32,.5);
+}
+
+.hero-sub{
+  font-family:'Amiri',serif;font-style:italic;
+  font-size:clamp(17px,3.5vw,26px);
+  color:var(--muted);margin-top:1.5rem;
+  opacity:0;animation:riseIn .8s ease 1.3s forwards;
+}
+
+.scroll-cue{
+  position:absolute;bottom:2.5rem;left:50%;
+  transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  opacity:0;animation:riseIn .6s ease 2s forwards;
+}
+.scroll-cue span{font-size:10px;letter-spacing:5px;color:var(--muted);text-transform:uppercase;}
+.scroll-track{
+  width:1px;height:55px;
+  background:linear-gradient(to bottom,var(--gold),transparent);
+  animation:drain 2s ease-in-out infinite;
+}
+@keyframes drain{
+  0%{transform:scaleY(0);transform-origin:top;}
+  45%{transform:scaleY(1);transform-origin:top;}
+  55%{transform:scaleY(1);transform-origin:bottom;}
+  100%{transform:scaleY(0);transform-origin:bottom;}
+}
+
+/* ======================== SECTION 2 ======================== */
+.s2{
+  position:relative;z-index:1;
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:5rem 2rem;
+  background:linear-gradient(145deg,var(--cream) 0%,var(--blush) 55%,var(--cream2) 100%);
+}
+
+.s2-inner{
+  text-align:center;max-width:900px;
+}
+
+.big-reveal{
+  font-family:'Amiri',serif;
+  font-size:clamp(44px,10vw,100px);
+  font-weight:700;line-height:1.2;
+  color:var(--text);
+  clip-path:inset(0 0 100% 0);
+  transition:clip-path 1.3s cubic-bezier(.16,1,.3,1);
+}
+.big-reveal.on{clip-path:inset(0 0 0% 0);}
+
+.big-reveal .hi{
+  color:var(--gold);
+  display:inline-block;
+  position:relative;
+}
+.big-reveal .hi::after{
+  content:'';
+  position:absolute;bottom:-6px;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--gold2),var(--gold));
+  border-radius:2px;
+  transform:scaleX(0);
+  transition:transform 1.2s ease 1s;
+}
+.big-reveal.on .hi::after{transform:scaleX(1);}
+
+.s2-line{
+  font-size:clamp(14px,2.5vw,18px);
+  color:var(--muted);letter-spacing:5px;
+  margin-top:1.5rem;
+  opacity:0;transform:translateY(20px);
+  transition:all 1s ease .6s;
+}
+.s2-line.on{opacity:1;transform:translateY(0);}
+
+/* ======================== SECTION 3 - TRAY ======================== */
+.s3{
+  position:relative;z-index:1;
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:5rem 2rem;
+  gap:3rem;
+}
+
+.s3-label{
+  font-size:11px;letter-spacing:7px;
+  text-transform:uppercase;color:var(--gold);
+  opacity:0;transform:translateY(20px);
+  transition:all .8s ease;
+}
+.s3-label.on{opacity:1;transform:translateY(0);}
+
+.tray{
+  display:flex;
+  flex-wrap:wrap;
+  gap:20px;justify-content:center;
+  max-width:700px;
+}
+
+.ka7ka{
+  background:linear-gradient(135deg,var(--white),var(--cream));
+  border-radius:24px;
+  padding:2.2rem 1.8rem;
+  text-align:center;
+  width:190px;
+  border:1px solid rgba(200,144,32,.12);
+  box-shadow:0 6px 30px rgba(100,50,20,.07),0 1px 0 rgba(255,255,255,.9) inset;
+  opacity:0;transform:translateY(50px) scale(.94) rotate(var(--r,0deg));
+  transition:all .85s cubic-bezier(.16,1,.3,1);
+  transition-delay:var(--d,0s);
+}
+.ka7ka:hover{
+  transform:translateY(-6px) scale(1.03) rotate(0deg) !important;
+  box-shadow:0 16px 48px rgba(100,50,20,.12);
+  transition-delay:0s !important;
+}
+.ka7ka.on{opacity:1;transform:translateY(0) scale(1) rotate(0deg);}
+
+.ka7ka-icon{font-size:2.8rem;margin-bottom:.8rem;display:block;}
+.ka7ka-title{
+  font-family:'Amiri',serif;
+  font-size:1.25rem;font-weight:700;
+  color:var(--text);margin-bottom:.5rem;
+}
+.ka7ka-body{
+  font-size:.85rem;line-height:1.8;
+  color:var(--muted);
+}
+
+/* ======================== SECTION 4 - FINAL ======================== */
+.s4{
+  position:relative;z-index:1;
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;padding:5rem 2rem;
+  background:linear-gradient(160deg,var(--cream2),var(--sage));
+  overflow:hidden;
+}
+
+/* big ornamental Arabic letter backdrop */
+.s4-backdrop{
+  position:absolute;
+  font-family:'Amiri',serif;
+  font-size:42vw;font-weight:700;
+  color:rgba(200,144,32,.04);
+  line-height:1;
+  pointer-events:none;user-select:none;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  white-space:nowrap;
+}
+
+.s4-top{
+  font-size:11px;letter-spacing:7px;
+  text-transform:uppercase;color:var(--gold);
+  margin-bottom:2rem;
+  opacity:0;transform:translateY(20px);
+  transition:all .8s ease;
+}
+.s4-top.on{opacity:1;transform:translateY(0);}
+
+.s4-msg{
+  font-family:'Amiri',serif;
+  font-size:clamp(32px,7vw,72px);
+  font-weight:700;line-height:1.45;
+  color:var(--text);
+  max-width:720px;
+  clip-path:inset(0 0 100% 0);
+  transition:clip-path 1.4s cubic-bezier(.16,1,.3,1) .2s;
+}
+.s4-msg.on{clip-path:inset(0 0 0% 0);}
+
+.s4-from{
+  margin-top:3rem;
+  font-size:11px;letter-spacing:6px;
+  color:var(--muted);text-transform:uppercase;
+  opacity:0;transition:opacity 1s ease .8s;
+}
+.s4-from.on{opacity:1;}
+
+.s4-hearts{
+  display:flex;gap:12px;margin-top:1.5rem;
+  opacity:0;transition:opacity .8s ease 1.1s;
+}
+.s4-hearts.on{opacity:1;}
+.s4-hearts span{
+  width:10px;height:10px;
+  background:var(--gold);
+  transform:rotate(45deg);
+  border-radius:1px;
+  animation:beatGem 2s ease-in-out infinite;
+}
+.s4-hearts span:nth-child(2){animation-delay:.3s;opacity:.7;width:7px;height:7px;}
+.s4-hearts span:nth-child(3){animation-delay:.6s;opacity:.5;width:5px;height:5px;}
+@keyframes beatGem{
+  0%,100%{transform:rotate(45deg) scale(1);}
+  50%{transform:rotate(45deg) scale(1.4);}
+}
+
+/* ======================== ANIMS ======================== */
+@keyframes riseIn{
+  from{opacity:0;transform:translateY(28px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--cream);}
+::-webkit-scrollbar-thumb{background:var(--sand);border-radius:2px;}
+
+#takbeer-btn{
+  position:fixed;bottom:2rem;left:2rem;
+  z-index:999;
+  display:flex;align-items:center;gap:10px;
+  background:var(--white);
+  border:1px solid rgba(200,144,32,.25);
+  border-radius:100px;
+  padding:.7rem 1.2rem;
+  cursor:pointer;
+  box-shadow:0 8px 30px rgba(100,50,20,.1);
+  transition:all .3s ease;
+  font-family:'Tajawal',sans-serif;
+  color:var(--text);
+  direction:rtl;
+}
+#takbeer-btn:hover{background:var(--cream2);transform:translateY(-2px);box-shadow:0 12px 40px rgba(100,50,20,.15);}
+.tb-icon{
+  width:36px;height:36px;
+  background:linear-gradient(135deg,var(--gold2),var(--gold));
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .3s;
+}
+#takbeer-btn:hover .tb-icon{transform:scale(1.1);}
+#takbeer-btn.playing .tb-icon{animation:pulseGold 1.4s ease-in-out infinite;}
+@keyframes pulseGold{0%,100%{box-shadow:0 0 0 0 rgba(200,144,32,.5);}50%{box-shadow:0 0 0 10px rgba(200,144,32,0);}}
+.tb-icon svg{width:16px;height:16px;fill:white;}
+.tb-label{font-size:12px;letter-spacing:2px;color:var(--muted);font-weight:500;}
+.tb-bar{display:flex;align-items:center;gap:3px;height:18px;opacity:0;transition:opacity .3s;}
+#takbeer-btn.playing .tb-bar{opacity:1;}
+.tb-bar span{display:block;width:3px;border-radius:2px;background:var(--gold);animation:wave 1.2s ease-in-out infinite;}
+.tb-bar span:nth-child(1){height:6px;animation-delay:0s;}
+.tb-bar span:nth-child(2){height:12px;animation-delay:.2s;}
+.tb-bar span:nth-child(3){height:8px;animation-delay:.4s;}
+.tb-bar span:nth-child(4){height:14px;animation-delay:.1s;}
+.tb-bar span:nth-child(5){height:6px;animation-delay:.3s;}
+@keyframes wave{0%,100%{transform:scaleY(1);}50%{transform:scaleY(1.8);}}
 </style>
 </head>
 <body>
 
-<div id="loading">
-  <span class="load-presents" id="lp">Mazen presents</span>
-  <span class="load-title"    id="lt">عيد مبارك</span>
-  <div class="load-bar-wrap"  id="lbw"><div class="load-bar" id="lb"></div></div>
-</div>
-
-<div id="scroll-space"></div>
-<div id="vignette"></div>
-<div id="vignette-drama"></div>
 <div id="cursor"></div>
 <div id="cursor-ring"></div>
 
-<div id="scene-label">
-  <span class="scene-num"  id="sl-num">I</span>
-  <span class="scene-name" id="sl-name">The Arrival</span>
-</div>
+<audio id="takbeer-audio" loop>
+  <source src="https://www.islamicfinder.org/prayer/eid_takbeer.mp3" type="audio/mpeg">
+</audio>
 
-<div id="dots">
-  <div class="dot active"></div><div class="dot"></div>
-  <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-</div>
+<canvas id="c3"></canvas>
 
-<div id="scroll-hint">
-  <span class="sh-text">scroll</span><div class="sh-line"></div>
-</div>
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="hero-chip">عيد الفطر المبارك ١٤٤٦ هـ</div>
+  <h1 class="hero-title">عيد مبارك</h1>
+  <p class="hero-en">Eid Al-Fitr Mubarak</p>
+  <div class="divider"><div class="divider-gem"></div><div class="divider-gem"></div><div class="divider-gem"></div></div>
+  <p class="hero-sub">كل عام وأنتم بألف خير وسعادة</p>
+  <div class="scroll-cue">
+    <span>اسكرول</span>
+    <div class="scroll-track"></div>
+  </div>
+</section>
 
-<div id="msg-overlay">
-  <div class="msg-main" id="mm"></div>
-  <div class="msg-divider" id="md1"></div>
-  <div class="msg-sub"  id="ms">كل عام وأنتم بخير</div>
-  <div class="msg-divider" id="md2"></div>
-  <div class="msg-from" id="mf">From Mazen</div>
-</div>
+<!-- ===== S2 ===== -->
+<section class="s2">
+  <div class="s2-inner">
+    <h2 class="big-reveal" id="r1">
+      كل عام <span class="hi">وأنتم</span> بخير
+    </h2>
+    <p class="s2-line" id="r1b">تقبّل الله منّا ومنكم صالح الأعمال</p>
+  </div>
+</section>
 
-<div id="slowmo">slow motion</div>
-<button id="mute-btn">♪</button>
-<div id="name-hint">?name=YourName</div>
+<!-- ===== S3 ===== -->
+<section class="s3">
+  <p class="s3-label" id="tray-label">— طبق الكحك —</p>
+  <div class="tray">
+    <div class="ka7ka" style="--r:-3deg;--d:0s" id="k1">
+      <span class="ka7ka-icon">🌙</span>
+      <h3 class="ka7ka-title">رمضان كريم</h3>
+      <p class="ka7ka-body">أعاد الله علينا وعليكم هذا الشهر الكريم بالخير والبركة</p>
+    </div>
+    <div class="ka7ka" style="--r:2deg;--d:.15s" id="k2">
+      <span class="ka7ka-icon">🤍</span>
+      <h3 class="ka7ka-title">صيام مقبول</h3>
+      <p class="ka7ka-body">تقبل الله منكم الصيام والقيام وجميع الأعمال الصالحة</p>
+    </div>
+    <div class="ka7ka" style="--r:-2deg;--d:.3s" id="k3">
+      <span class="ka7ka-icon">✨</span>
+      <h3 class="ka7ka-title">فرحة العيد</h3>
+      <p class="ka7ka-body">جعل الله أيامكم كلها أفراحاً وقلوبكم دائماً مسرورة</p>
+    </div>
+    <div class="ka7ka" style="--r:3deg;--d:.45s" id="k4">
+      <span class="ka7ka-icon">🌸</span>
+      <h3 class="ka7ka-title">بركة وسلام</h3>
+      <p class="ka7ka-body">ملأ الله بيتكم سعادةً وقلوبكم طمأنينةً ورضا</p>
+    </div>
+  </div>
+</section>
 
-<!-- Two canvases: main render + bloom overlay -->
-<canvas id="c"></canvas>
-<canvas id="bloom-canvas"></canvas>
+<!-- ===== S4 ===== -->
+<section class="s4">
+  <div class="s4-backdrop">ع</div>
+  <p class="s4-top" id="s4t">— من القلب —</p>
+  <h2 class="s4-msg" id="s4m">
+    تقبّل الله منّا<br>ومنكم صالح الأعمال<br>وجعلنا وإياكم<br>من عتقاء هذا الشهر
+  </h2>
+  <p class="s4-from" id="s4f">عيد سعيد · ٢٠٢٦</p>
+  <div class="s4-hearts" id="s4h">
+    <span></span><span></span><span></span>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer style="
+  position:relative;z-index:1;
+  padding:2rem 2rem;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--cream2);
+  border-top:1px solid rgba(200,144,32,.12);
+">
+  <p style="
+    font-family:'Tajawal',sans-serif;
+    font-size:11px;
+    letter-spacing:5px;
+    color:var(--muted);
+    text-transform:uppercase;
+    white-space:nowrap;
+    opacity:.7;
+    transition:opacity .3s;
+  " onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.7'">
+    — made by <span style="color:var(--gold);font-weight:700;letter-spacing:6px;">mazen</span> —
+  </p>
+</footer>
 
 <script>
-/* ══════════════════════════════════════════════════════
-   CINEMATIC EID AL-FITR  ·  Mazen  ·  Self-contained
-   No postprocessing CDN. Bloom = CSS filter on a
-   second canvas. Three.js r128 + GSAP 3.
-══════════════════════════════════════════════════════ */
-
-/* ── Utilities ────────────────────────────────────── */
-const lerp   = (a,b,t) => a+(b-a)*t;
-const clamp  = (v,a,b) => Math.max(a,Math.min(b,v));
-const ease   = t => t<.5?2*t*t:-1+(4-2*t)*t;
-const easeO  = t => 1-(1-t)*(1-t)*(1-t);
-const sleep  = ms => new Promise(r=>setTimeout(r,ms));
-const noise1 = (t,s=0) => Math.sin(t*1.7+s)*.5+Math.sin(t*3.1+s*1.3)*.3+Math.sin(t*5.9+s*.7)*.2;
-
-/* ── Custom name ──────────────────────────────────── */
-const guestName = new URLSearchParams(location.search).get('name');
-document.getElementById('mm').textContent = guestName ? `عيد مبارك يا ${guestName}` : 'عيد مبارك';
-if(!guestName){ const nh=document.getElementById('name-hint'); nh.style.opacity='1'; nh.style.transition='opacity 1s 6s'; }
-
-/* ══════════════════════════════════════════════════════
-   RENDERER  (main canvas)
-══════════════════════════════════════════════════════ */
-const canvas  = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:'high-performance' });
-renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
-renderer.toneMapping        = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.3;
-renderer.outputEncoding      = THREE.sRGBEncoding;
-
-/* ── BLOOM CANVAS  (second renderer, CSS-blurred overlay) ── */
-const bloomCanvas   = document.getElementById('bloom-canvas');
-const bloomRenderer = new THREE.WebGLRenderer({ canvas:bloomCanvas, antialias:false, alpha:true });
-bloomRenderer.setSize(Math.round(innerWidth/2), Math.round(innerHeight/2)); // half-res for perf
-bloomRenderer.setPixelRatio(1);
-bloomRenderer.setClearColor(0x000000, 0);
-bloomRenderer.toneMapping        = THREE.ACESFilmicToneMapping;
-bloomRenderer.toneMappingExposure = 2.2; // brighter → more glow
-bloomRenderer.outputEncoding      = THREE.sRGBEncoding;
-// Force CSS size to fill screen despite half-res buffer
-bloomCanvas.style.width  = '100vw';
-bloomCanvas.style.height = '100vh';
-
-/* ══════════════════════════════════════════════════════
-   SCENE + CAMERA
-══════════════════════════════════════════════════════ */
-const scene  = new THREE.Scene();
-scene.background = new THREE.Color(0x070503);
-scene.fog = new THREE.FogExp2(0x070503, 0.028);
-
-const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 300);
-camera.position.set(0,22,42);
-
-/* ══════════════════════════════════════════════════════
-   SOUND  (Web Audio API)
-══════════════════════════════════════════════════════ */
-let audioCtx=null, masterGain=null, soundEnabled=true, soundInited=false;
-
-function initSound(){
-  if(soundInited) return; soundInited=true;
-  try{
-    audioCtx  = new (window.AudioContext||window.webkitAudioContext)();
-    masterGain = audioCtx.createGain(); masterGain.gain.value=0;
-    masterGain.connect(audioCtx.destination);
-
-    // Brownian noise drone
-    const bLen=audioCtx.sampleRate*4, nBuf=audioCtx.createBuffer(1,bLen,audioCtx.sampleRate);
-    const nd=nBuf.getChannelData(0); let last=0;
-    for(let i=0;i<bLen;i++){ last=(last+.02*(Math.random()*2-1))*.98; nd[i]=last; }
-    const nSrc=audioCtx.createBufferSource(); nSrc.buffer=nBuf; nSrc.loop=true;
-    const lp=audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=180;
-    const ng=audioCtx.createGain(); ng.gain.value=.07;
-    nSrc.connect(lp); lp.connect(ng); ng.connect(masterGain); nSrc.start();
-
-    // Two tones
-    [55,.025, 82,.012].reduce((acc,v,i,a)=>{ if(i%2){ const o=audioCtx.createOscillator(); o.type=i<2?'sine':'triangle'; o.frequency.value=a[i-1]; const g=audioCtx.createGain(); g.gain.value=v; o.connect(g); g.connect(masterGain); o.start(); } return acc; }, null);
-
-    masterGain.gain.setTargetAtTime(soundEnabled?1:0, audioCtx.currentTime, 1.8);
-  }catch(e){ console.warn('Audio unavailable'); }
-}
-
-function playCrumble(){
-  if(!audioCtx||!soundEnabled) return;
-  const b=audioCtx.sampleRate*.3, buf=audioCtx.createBuffer(1,b,audioCtx.sampleRate);
-  const d=buf.getChannelData(0);
-  for(let i=0;i<b;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(audioCtx.sampleRate*.07));
-  const s=audioCtx.createBufferSource(); s.buffer=buf;
-  const f=audioCtx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1800; f.Q.value=1.8;
-  const g=audioCtx.createGain(); g.gain.value=.3;
-  s.connect(f); f.connect(g); g.connect(masterGain); s.start();
-}
-
-function playFW(){
-  if(!audioCtx||!soundEnabled) return;
-  const now=audioCtx.currentTime;
-  const o=audioCtx.createOscillator(); o.type='sine';
-  o.frequency.setValueAtTime(350,now); o.frequency.exponentialRampToValueAtTime(1100,now+.35);
-  const g=audioCtx.createGain(); g.gain.setValueAtTime(.12,now); g.gain.exponentialRampToValueAtTime(.001,now+.4);
-  o.connect(g); g.connect(masterGain); o.start(now); o.stop(now+.4);
-}
-
-const muteBtn=document.getElementById('mute-btn');
-muteBtn.addEventListener('click',()=>{
-  soundEnabled=!soundEnabled; muteBtn.textContent=soundEnabled?'♪':'✕';
-  if(masterGain) masterGain.gain.setTargetAtTime(soundEnabled?1:0,audioCtx.currentTime,.3);
-},{passive:true});
-
-/* ══════════════════════════════════════════════════════
-   LIGHTS
-══════════════════════════════════════════════════════ */
-const ambient = new THREE.AmbientLight(0x1a0e04,.4); scene.add(ambient);
-
-const key = new THREE.SpotLight(0xFFD08A,0,65,Math.PI/7,.38,1.1);
-key.position.set(4,18,6); key.castShadow=true;
-key.shadow.mapSize.setScalar(2048); key.shadow.camera.near=1; key.shadow.camera.far=55; key.shadow.bias=-.001;
-const keyTgt=new THREE.Object3D(); scene.add(keyTgt); key.target=keyTgt; scene.add(key);
-
-const fill   = new THREE.PointLight(0xFF8833,0,45); fill.position.set(-9,6,7);    scene.add(fill);
-const rim    = new THREE.PointLight(0xFFCC55,0,32); rim.position.set(2,3,-9);      scene.add(rim);
-const bounce = new THREE.PointLight(0xFF9922,0,24); bounce.position.set(0,-2.5,2); scene.add(bounce);
-const under  = new THREE.PointLight(0xCC7700,0,18); under.position.set(0,-.5,4);   scene.add(under);
-const cel1   = new THREE.PointLight(0xFFD700,0,90); cel1.position.set(16,22,4);    scene.add(cel1);
-const cel2   = new THREE.PointLight(0xFF6600,0,90); cel2.position.set(-16,18,-4);  scene.add(cel2);
-const cel3   = new THREE.PointLight(0xFFAA00,0,70); cel3.position.set(0,26,-12);   scene.add(cel3);
-
-let lightReveal=0;
-const LB={key:3.0,fill:1.6,rim:1.0,bounce:.8,under:.5};
-let flickT=0;
-function tickFlicker(dt){
-  flickT+=dt; const fi=1+noise1(flickT*2.1)*.06;
-  key.intensity    = LB.key*fi*lightReveal;
-  fill.intensity   = LB.fill*fi*lightReveal;
-  rim.intensity    = LB.rim*fi*lightReveal;
-  bounce.intensity = LB.bounce*fi*lightReveal;
-  under.intensity  = LB.under*fi*lightReveal;
-}
-
-/* ── Warm procedural env map ────────────────────────────── */
-(function(){
-  try{
-    const W=64,H=32, d=new Uint8Array(W*H*4);
-    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-      const i=(y*W+x)*4, ty=y/H;
-      d[i]=18+ty*12; d[i+1]=8+ty*5; d[i+2]=2; d[i+3]=255;
-      const dx=x/W-.35, dy=y/H-.12, dist=Math.sqrt(dx*dx+dy*dy);
-      if(dist<.22){ const s=Math.pow(1-dist/.22,2.2); d[i]=Math.min(255,d[i]+s*160|0); d[i+1]=Math.min(255,d[i+1]+s*100|0); d[i+2]=Math.min(255,d[i+2]+s*30|0); }
-    }
-    const t=new THREE.DataTexture(d,W,H,THREE.RGBAFormat);
-    t.mapping=THREE.EquirectangularReflectionMapping; t.needsUpdate=true;
-    const pmrem=new THREE.PMREMGenerator(renderer);
-    scene.environment=pmrem.fromEquirectangular(t).texture;
-    pmrem.dispose(); t.dispose();
-  }catch(e){}
-})();
-
-/* ══════════════════════════════════════════════════════
-   FLOOR + TRAY
-══════════════════════════════════════════════════════ */
-const FLOOR_Y=-3.8;
-const floorMesh=new THREE.Mesh(
-  new THREE.PlaneGeometry(120,120),
-  new THREE.MeshPhysicalMaterial({color:0x0C0805,roughness:.95,metalness:.06})
-);
-floorMesh.rotation.x=-Math.PI/2; floorMesh.position.y=FLOOR_Y;
-floorMesh.receiveShadow=true; floorMesh.visible=false; scene.add(floorMesh);
-
-const trayMat=new THREE.MeshPhysicalMaterial({color:0xC8941C,roughness:.15,metalness:.90,reflectivity:1,clearcoat:.35,clearcoatRoughness:.18,envMapIntensity:1.6});
-const trayGroup=new THREE.Group();
-trayGroup.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(5.2,5.0,.18,72),trayMat),{castShadow:true,receiveShadow:true}));
-const trayRim=new THREE.Mesh(new THREE.TorusGeometry(5.1,.28,20,80),trayMat);
-trayRim.rotation.x=Math.PI/2; trayRim.position.y=.12; trayGroup.add(trayRim);
-[3.8,2.5,1.2].forEach(r=>{ const rg=new THREE.Mesh(new THREE.TorusGeometry(r,.04,8,64),trayMat); rg.rotation.x=Math.PI/2; rg.position.y=.12; trayGroup.add(rg); });
-for(let i=0;i<20;i++){ const a=(i/20)*Math.PI*2,dt=new THREE.Mesh(new THREE.SphereGeometry(.07,8,8),trayMat); dt.position.set(Math.cos(a)*4.9,.32,Math.sin(a)*4.9); trayGroup.add(dt); }
-trayGroup.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(.6,.6,.06,32),trayMat),{position:{x:0,y:.14,z:0}}));
-trayGroup.position.y=.2; scene.add(trayGroup);
-
-/* ══════════════════════════════════════════════════════
-   KA7K  (realistic Egyptian disk-shaped cookies)
-══════════════════════════════════════════════════════ */
-const CDEFS=[
-  {x:0,   y:.44,z:0,    s:1.10,rx:.05,ry:0,   rz:.03},
-  {x:2.05,y:.43,z:0,    s:.96, rx:.04,ry:1.15, rz:.07},
-  {x:-2.05,y:.43,z:0,   s:.96, rx:.05,ry:-.72, rz:-.06},
-  {x:0,   y:.43,z:2.05, s:.96, rx:.06,ry:.54,  rz:.08},
-  {x:0,   y:.43,z:-2.05,s:.94, rx:.03,ry:-.28, rz:-.05},
-  {x:1.45,y:.43,z:1.45, s:.90, rx:.08,ry:2.10, rz:.10},
-  {x:-1.45,y:.43,z:-1.45,s:.90,rx:.07,ry:.88,  rz:-.09},
-  {x:1.45,y:.43,z:-1.45,s:.88, rx:.09,ry:-1.48,rz:.11},
-  {x:-1.45,y:.43,z:1.45,s:.88, rx:.06,ry:2.98, rz:-.10},
-  {x:3.55,y:.40,z:.70,  s:.80, rx:.16,ry:1.82, rz:.18},
-  {x:-3.55,y:.40,z:-.70,s:.80, rx:.14,ry:-.58, rz:-.15},
-];
-const cookieObjects=[];
-
-function buildKa7k({x,y,z,s,rx,ry,rz}){
-  const g=new THREE.Group();
-  const R=.70*s,H=.30*s,SEG=48;
-  const hue=.065+(Math.random()-.5)*.022,sat=.55+Math.random()*.14,lit=.42+Math.random()*.11;
-  const bc=new THREE.Color().setHSL(hue,sat,lit);
-  const dc=new THREE.Color().setHSL(hue,sat+.08,lit-.11);
-  const gc=new THREE.Color().setHSL(hue,sat+.06,lit-.14);
-
-  const bodyMat=new THREE.MeshPhysicalMaterial({
-    color:bc,roughness:.82+Math.random()*.08,metalness:0,clearcoat:.04,clearcoatRoughness:.97,
-    emissive:new THREE.Color().setHSL(hue,.5,.03),envMapIntensity:.2
-  });
-
-  // Deformed cylinder body
-  const geo=new THREE.CylinderGeometry(R,R*.955,H,SEG,5,false);
-  const pos=geo.attributes.position;
-  const w1=Math.random()*Math.PI*2,w2=Math.random()*Math.PI*2,w3=Math.random()*Math.PI*2;
-  for(let vi=0;vi<pos.count;vi++){
-    const vx=pos.getX(vi),vy=pos.getY(vi),vz=pos.getZ(vi);
-    const d=Math.sqrt(vx*vx+vz*vz),a=Math.atan2(vz,vx);
-    if(d>.01&&Math.abs(vy)<H*.48){
-      const wob=(Math.sin(a*5+w1)*.017+Math.cos(a*3+w2)*.011+Math.sin(a*2+w3)*.013)*s;
-      pos.setX(vi,Math.cos(a)*(d+wob)); pos.setZ(vi,Math.sin(a)*(d+wob));
-    }
-    if(vy>H*.38&&d<R*1.05){const t=d/R;pos.setY(vi,vy+(1-t*t)*H*.18);}
-    if(vy<-H*.38&&d<R*.9){const t=d/R;pos.setY(vi,vy+(1-t*t)*H*.04);}
-  }
-  geo.computeVertexNormals();
-  const body=new THREE.Mesh(geo,bodyMat); body.castShadow=true; body.receiveShadow=true; g.add(body);
-
-  // Dark bottom
-  const bm=new THREE.Mesh(new THREE.CylinderGeometry(R*.90,R*.85,.012*s,SEG),new THREE.MeshPhysicalMaterial({color:dc,roughness:.94,metalness:0}));
-  bm.position.y=-H*.51; g.add(bm);
-
-  // Stamp pattern on top
-  const pY=H*.51,gm=new THREE.MeshPhysicalMaterial({color:gc,roughness:.92,metalness:0});
-  const or=new THREE.Mesh(new THREE.TorusGeometry(R*.76,.022*s,6,48),gm); or.rotation.x=Math.PI/2; or.position.y=pY; g.add(or);
-  const mr=new THREE.Mesh(new THREE.TorusGeometry(R*.46,.018*s,6,40),gm); mr.rotation.x=Math.PI/2; mr.position.y=pY; g.add(mr);
-  const RN=(Math.random()>.45)?8:6;
-  for(let ri=0;ri<RN;ri++){
-    const a=(ri/RN)*Math.PI*2;
-    const ray=new THREE.Mesh(new THREE.BoxGeometry(R*.52,.018*s,.016*s),gm);
-    ray.position.set(Math.cos(a)*R*.37,pY,Math.sin(a)*R*.37); ray.rotation.y=-a; g.add(ray);
-    const pd=new THREE.Mesh(new THREE.CylinderGeometry(.038*s,.038*s,.022*s,8),gm);
-    pd.position.set(Math.cos(a)*R*.46,pY,Math.sin(a)*R*.46); g.add(pd);
-  }
-  const cm=new THREE.Mesh(new THREE.CylinderGeometry(.11*s,.11*s,.025*s,16),new THREE.MeshPhysicalMaterial({color:new THREE.Color().setHSL(hue,sat+.10,lit-.17),roughness:.88,metalness:0}));
-  cm.position.y=pY; g.add(cm);
-
-  // Powdered sugar
-  const sm=new THREE.MeshPhysicalMaterial({color:0xFFFDF8,roughness:1,metalness:0,transparent:true,opacity:.52});
-  g.add(new THREE.Mesh(new THREE.CylinderGeometry(R+.016*s,R*.96+.012*s,H*1.04,SEG,1,true),sm));
-  const st=new THREE.Mesh(new THREE.CylinderGeometry(R*.92,R*.92,.012*s,SEG),sm); st.position.y=H*.52; g.add(st);
-
-  // Sugar granules
-  const gran=new THREE.MeshBasicMaterial({color:0xFFFEFC,transparent:true,opacity:.75});
-  for(let gi=0;gi<16+Math.random()*8|0;gi++){
-    const ga=Math.random()*Math.PI*2,gr=Math.random()*R*.84,t=gr/R;
-    const gd=new THREE.Mesh(new THREE.SphereGeometry(.016*s+Math.random()*.012*s,4,3),gran);
-    gd.position.set(Math.cos(ga)*gr,H*.5+(1-t*t)*H*.18+.018*s,Math.sin(ga)*gr); g.add(gd);
-  }
-
-  // Edge ring
-  const er=new THREE.Mesh(new THREE.TorusGeometry(R*.97,.038*s,10,48),new THREE.MeshPhysicalMaterial({color:new THREE.Color().setHSL(hue,sat-.04,lit+.07),roughness:.88,metalness:0}));
-  er.rotation.x=Math.PI/2; g.add(er);
-
-  g.position.set(x,y,z); g.rotation.set(rx,ry,rz);
-  trayGroup.add(g);
-  cookieObjects.push({
-    mesh:g, origPos:new THREE.Vector3(x,y,z), origRot:new THREE.Euler(rx,ry,rz),
-    vel:new THREE.Vector3(),
-    angVel:new THREE.Vector3((Math.random()-.5)*.06,(Math.random()-.5)*.06,(Math.random()-.5)*.06),
-    radius:R+.10, physics:false, settled:false
-  });
-}
-CDEFS.forEach(buildKa7k);
-
-/* ══════════════════════════════════════════════════════
-   PARTICLES  (stars, dust, crumbs, fireworks)
-══════════════════════════════════════════════════════ */
-// Stars
-(()=>{ const g=new THREE.BufferGeometry(),p=new Float32Array(1200*3);
-  for(let i=0;i<1200;i++){p[i*3]=(Math.random()-.5)*300;p[i*3+1]=(Math.random()-.5)*150;p[i*3+2]=-80-Math.random()*60;}
-  g.setAttribute('position',new THREE.BufferAttribute(p,3));
-  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xFFE8A0,size:.06,transparent:true,opacity:.38,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true})));
-})();
-
-// Dust
-const DUST=900,dustGeo=new THREE.BufferGeometry();
-const dPos=new Float32Array(DUST*3),dPhase=new Float32Array(DUST);
-for(let i=0;i<DUST;i++){const r=2+Math.random()*10,a=Math.random()*Math.PI*2;dPos[i*3]=Math.cos(a)*r;dPos[i*3+1]=(Math.random()-.25)*10;dPos[i*3+2]=Math.sin(a)*r;dPhase[i]=Math.random()*Math.PI*2;}
-dustGeo.setAttribute('position',new THREE.BufferAttribute(dPos,3));
-const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0xFFE8B0,size:.045,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
-scene.add(dust);
-
-// Crumbs
-const CRUMB=600,crGeo=new THREE.BufferGeometry(),crPos=new Float32Array(CRUMB*3),crVel=[];
-for(let i=0;i<CRUMB;i++){crPos[i*3]=crPos[i*3+1]=crPos[i*3+2]=0;crVel.push({x:0,y:0,z:0,alive:0});}
-crGeo.setAttribute('position',new THREE.BufferAttribute(crPos,3));
-const crumbs=new THREE.Points(crGeo,new THREE.PointsMaterial({color:0xFFCC80,size:.07,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
-scene.add(crumbs);
-
-// Fireworks
-const FW=2000,fwGeo=new THREE.BufferGeometry(),fwPos=new Float32Array(FW*3),fwCol=new Float32Array(FW*3),fwVel=[];
-const fwPal=[[1,.84,0],[1,.65,0],[1,.9,.4],[1,1,.8],[.9,.75,.2],[1,.5,.1]];
-for(let i=0;i<FW;i++){
-  fwPos[i*3]=fwPos[i*3+1]=fwPos[i*3+2]=0;
-  const c=fwPal[i%fwPal.length]; fwCol[i*3]=c[0];fwCol[i*3+1]=c[1];fwCol[i*3+2]=c[2];
-  const spd=.06+Math.random()*.28,th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
-  fwVel.push({x:spd*Math.sin(ph)*Math.cos(th),y:spd*Math.sin(ph)*Math.sin(th)*.7+.035,z:spd*Math.cos(ph),d:.93+Math.random()*.04});
-}
-fwGeo.setAttribute('position',new THREE.BufferAttribute(fwPos,3));
-fwGeo.setAttribute('color',new THREE.BufferAttribute(fwCol,3));
-const fwMat=new THREE.PointsMaterial({vertexColors:true,size:.16,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
-const fwMesh=new THREE.Points(fwGeo,fwMat); scene.add(fwMesh);
-let fwTimer=0,fwAlive=false;
-const FWC=[[0,9,0],[-7,13,-3],[7,11,4],[0,15,-6],[4,10,6],[-4,14,3]];
-
-function launchFW(){fwTimer=0;fwAlive=true;fwMat.opacity=1;
-  const ci=Math.floor(Math.random()*FWC.length);
-  for(let i=0;i<FW;i++){const cc=FWC[(i+ci*333)%FWC.length];fwPos[i*3]=cc[0]+(Math.random()-.5)*1.5;fwPos[i*3+1]=cc[1]+(Math.random()-.5)*1.5;fwPos[i*3+2]=cc[2]+(Math.random()-.5)*1.5;}
-  fwGeo.attributes.position.needsUpdate=true; playFW();
-}
-function tickFW(ts){
-  if(!fwAlive)return; fwTimer++;
-  for(let i=0;i<FW;i++){const v=fwVel[i];fwPos[i*3]+=v.x*ts;v.x*=v.d;fwPos[i*3+1]+=v.y*ts;v.y*=v.d;v.y-=.0003*fwTimer*ts;fwPos[i*3+2]+=v.z*ts;v.z*=v.d;}
-  fwGeo.attributes.position.needsUpdate=true;
-  if(fwTimer>100){fwMat.opacity=Math.max(0,fwMat.opacity-.013);cel1.intensity*=.97;cel2.intensity*=.97;cel3.intensity*=.97;}
-  if(fwTimer>165){fwAlive=false;setTimeout(launchFW,1700);}
-}
-
-/* ══════════════════════════════════════════════════════
-   PHYSICS
-══════════════════════════════════════════════════════ */
-let physOn=false;
-const GRAV=-.0075,BNC=.30,FRC=.974;
-
-function activatePhysics(){
-  if(physOn)return; physOn=true; floorMesh.visible=true;
-  cookieObjects.forEach(o=>{
-    const wp=new THREE.Vector3(); o.mesh.getWorldPosition(wp);
-    const wr=new THREE.Euler(); wr.setFromRotationMatrix(o.mesh.matrixWorld);
-    trayGroup.remove(o.mesh); o.mesh.position.copy(wp); o.mesh.rotation.copy(wr); scene.add(o.mesh);
-    o.vel.set((Math.random()-.5)*.14,.06+Math.random()*.12,(Math.random()-.5)*.14);
-    o.physics=true; o.settled=false;
-  });
-  // spawn crumbs
-  for(let i=0;i<CRUMB;i++){
-    const o=cookieObjects[i%cookieObjects.length],wp=o.mesh.position;
-    crPos[i*3]=wp.x+(Math.random()-.5)*1.5; crPos[i*3+1]=wp.y+(Math.random()-.5)*.5; crPos[i*3+2]=wp.z+(Math.random()-.5)*1.5;
-    crVel[i].x=(Math.random()-.5)*.09; crVel[i].y=.02+Math.random()*.07; crVel[i].z=(Math.random()-.5)*.09; crVel[i].alive=1;
-  }
-  crGeo.attributes.position.needsUpdate=true; crumbs.material.opacity=.75;
-  addTrauma(.5); playCrumble();
-}
-function deactivatePhysics(){
-  if(!physOn)return; physOn=false; floorMesh.visible=false;
-  cookieObjects.forEach(o=>{
-    if(!o.physics)return; o.physics=false;
-    scene.remove(o.mesh); trayGroup.add(o.mesh);
-    gsap.to(o.mesh.position,{x:o.origPos.x,y:o.origPos.y,z:o.origPos.z,duration:2.2,ease:'power3.out'});
-    gsap.to(o.mesh.rotation,{x:o.origRot.x,y:o.origRot.y,z:o.origRot.z,duration:2.2,ease:'power3.out'});
-  }); crumbs.material.opacity=0;
-}
-function tickPhysics(ts){
-  if(!physOn)return;
-  for(let i=0;i<cookieObjects.length;i++){
-    const o=cookieObjects[i]; if(!o.physics||o.settled)continue;
-    o.vel.y+=GRAV*ts; o.mesh.position.addScaledVector(o.vel,ts);
-    o.mesh.rotation.x+=o.angVel.x*ts; o.mesh.rotation.y+=o.angVel.y*ts; o.mesh.rotation.z+=o.angVel.z*ts;
-    const fl=FLOOR_Y+o.radius;
-    if(o.mesh.position.y<=fl){o.mesh.position.y=fl;o.vel.y*=-BNC;o.vel.x*=FRC;o.vel.z*=FRC;o.angVel.multiplyScalar(.88);if(Math.abs(o.vel.y)<.005)o.vel.y=0;}
-    for(let j=i+1;j<cookieObjects.length;j++){
-      const b=cookieObjects[j]; if(!b.physics)continue;
-      const dx=o.mesh.position.x-b.mesh.position.x,dy=o.mesh.position.y-b.mesh.position.y,dz=o.mesh.position.z-b.mesh.position.z;
-      const d=Math.sqrt(dx*dx+dy*dy+dz*dz),mn=o.radius+b.radius+.08;
-      if(d<mn&&d>.001){const nx=dx/d,ny=dy/d,nz=dz/d,ov=(mn-d)*.5;o.mesh.position.x+=nx*ov;o.mesh.position.y+=ny*ov;o.mesh.position.z+=nz*ov;b.mesh.position.x-=nx*ov;b.mesh.position.y-=ny*ov;b.mesh.position.z-=nz*ov;const rv=(o.vel.x-b.vel.x)*nx+(o.vel.y-b.vel.y)*ny+(o.vel.z-b.vel.z)*nz,imp=rv*.42;o.vel.x-=imp*nx;o.vel.y-=imp*ny;o.vel.z-=imp*nz;b.vel.x+=imp*nx;b.vel.y+=imp*ny;b.vel.z+=imp*nz;}
-    }
-  }
-  let al=false;
-  for(let i=0;i<CRUMB;i++){if(!crVel[i].alive)continue;al=true;crPos[i*3]+=crVel[i].x*ts;crPos[i*3+1]+=crVel[i].y*ts;crVel[i].y-=.003*ts;crPos[i*3+2]+=crVel[i].z*ts;if(crPos[i*3+1]<FLOOR_Y){crVel[i].alive=0;crPos[i*3+1]=FLOOR_Y;}}
-  crGeo.attributes.position.needsUpdate=true;
-  if(!al&&crumbs.material.opacity>0)crumbs.material.opacity=Math.max(0,crumbs.material.opacity-.004);
-}
-
-/* ══════════════════════════════════════════════════════
-   CAMERA  (path, shake, slow-mo)
-══════════════════════════════════════════════════════ */
-const CAM=[
-  {t:0,  pos:[0,22,42],  tgt:[0,0,0]  },{t:.12,pos:[0,10,20],  tgt:[0,.5,0]},
-  {t:.27,pos:[14,6,12],  tgt:[0,.3,0]},{t:.42,pos:[-12,5,11], tgt:[0,.3,0]},
-  {t:.54,pos:[5,16,5],   tgt:[0,0,0] },{t:.67,pos:[6,8,18],   tgt:[0,0,0] },
-  {t:.80,pos:[0,7,22],   tgt:[0,3,0] },{t:.92,pos:[0,8,24],   tgt:[0,4,0] },
-  {t:1,  pos:[0,9,26],   tgt:[0,5,0] },
-];
-function getCam(t){
-  let i=0; while(i<CAM.length-1&&CAM[i+1].t<=t)i++;
-  if(i>=CAM.length-1){const L=CAM[CAM.length-1];return{pos:new THREE.Vector3(...L.pos),tgt:new THREE.Vector3(...L.tgt)};}
-  const a=CAM[i],b=CAM[i+1],lt=ease((t-a.t)/(b.t-a.t));
-  return{pos:new THREE.Vector3(lerp(a.pos[0],b.pos[0],lt),lerp(a.pos[1],b.pos[1],lt),lerp(a.pos[2],b.pos[2],lt)),tgt:new THREE.Vector3(lerp(a.tgt[0],b.tgt[0],lt),lerp(a.tgt[1],b.tgt[1],lt),lerp(a.tgt[2],b.tgt[2],lt))};
-}
-
-const shake={trauma:0,seed:Math.random()*100};
-function addTrauma(v){shake.trauma=clamp(shake.trauma+v,0,1);}
-function tickShake(dt,gt){
-  shake.trauma=Math.max(0,shake.trauma-dt*1.2);
-  const s2=shake.trauma*shake.trauma,t=gt*12;
-  return{x:noise1(t,shake.seed)*s2*.55,y:noise1(t+50,shake.seed)*s2*.35,z:noise1(t+100,shake.seed)*s2*.2};
-}
-
-let timeScale=1,tgtTS=1;
-const camCur={pos:new THREE.Vector3(0,22,42),tgt:new THREE.Vector3(0,0,0)};
-
-/* ══════════════════════════════════════════════════════
-   SCROLL + MOUSE
-══════════════════════════════════════════════════════ */
-let scrollT=0;
-window.addEventListener('scroll',()=>{
-  const mx=document.documentElement.scrollHeight-innerHeight;
-  scrollT=clamp(window.scrollY/mx,0,1); initSound();
-},{passive:true});
-
-const mouse={x:0,y:0};
-document.addEventListener('mousemove',e=>{mouse.x=(e.clientX/innerWidth-.5)*2;mouse.y=-(e.clientY/innerHeight-.5)*2;});
-
-/* ══════════════════════════════════════════════════════
-   SCENE STORYTELLING
-══════════════════════════════════════════════════════ */
-const SLABELS=[
-  {num:'I',  name:'The Arrival'},  {num:'II', name:'The Reveal'},
-  {num:'III',name:'The Dance'},    {num:'IV', name:'The Fall'},
-  {num:'V',  name:'The Blessing'},
-];
-// Per-scene config: bloom CSS opacity, fog, exposure, drama vignette
-const SCFG=[
-  {bloomOp:.0, fog:.040,exp:1.05,drama:0},
-  {bloomOp:.30,fog:.028,exp:1.20,drama:.05},
-  {bloomOp:.45,fog:.022,exp:1.30,drama:0},
-  {bloomOp:.60,fog:.018,exp:1.42,drama:.6},
-  {bloomOp:.70,fog:.012,exp:1.55,drama:0},
-];
-const atm={bloomOp:0,fog:.040,exp:1.05,drama:0};
-let curScene=-1,msgVisible=false,celebOn=false;
-
-function updateScene(t,dt){
-  let s=0;
-  if(t>.10)s=1; if(t>.35)s=2; if(t>.55)s=3; if(t>.75)s=4;
-  if(s!==curScene){
-    curScene=s;
-    document.getElementById('sl-num').textContent  =SLABELS[s].num;
-    document.getElementById('sl-name').textContent =SLABELS[s].name;
-    gsap.fromTo('#scene-label',{opacity:0},{opacity:1,duration:.5});
-    gsap.to('#scene-label',{opacity:0,duration:.5,delay:3.5});
-    document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===s));
-    if(s===3){activatePhysics();tgtTS=.22;document.getElementById('slowmo').style.opacity='1';}
-    if(s!==3&&curScene===3){deactivatePhysics();tgtTS=1;document.getElementById('slowmo').style.opacity='0';}
-  }
-
-  // Lerp atmosphere
-  const sp=Math.min(1,dt*1.6), cfg=SCFG[s];
-  atm.bloomOp=lerp(atm.bloomOp,cfg.bloomOp,sp);
-  atm.fog    =lerp(atm.fog,    cfg.fog,    sp);
-  atm.exp    =lerp(atm.exp,    cfg.exp,    sp);
-  atm.drama  =lerp(atm.drama,  cfg.drama,  sp);
-
-  bloomCanvas.style.opacity=atm.bloomOp;
-  scene.fog.density=atm.fog;
-  renderer.toneMappingExposure=atm.exp;
-  bloomRenderer.toneMappingExposure=atm.exp*1.7;
-  document.getElementById('vignette-drama').style.opacity=atm.drama;
-
-  // Light reveal
-  lightReveal=clamp((t-.04)/.20,0,1);
-
-  // Message
-  const mt=clamp((t-.74)/.06,0,1);
-  document.getElementById('msg-overlay').style.opacity=mt;
-  if(mt>.1&&!msgVisible){
-    msgVisible=true;
-    gsap.to('#mm', {opacity:1,y:0,duration:1.8,delay:.1,ease:'power3.out'});
-    gsap.to('#md1',{opacity:1,duration:1.2,delay:.6});
-    gsap.to('#ms', {opacity:1,y:0,duration:1.8,delay:.8,ease:'power3.out'});
-    gsap.to('#md2',{opacity:1,duration:1.2,delay:1.2});
-    gsap.to('#mf', {opacity:1,duration:1.4,delay:1.4});
-  }
-  if(mt<.05&&msgVisible){
-    msgVisible=false;
-    gsap.set(['#mm','#ms','#md1','#md2','#mf'],{opacity:0,y:24});
-    gsap.set(['#mf','#md1','#md2'],{y:0});
-  }
-
-  // Celebration
-  if(t>.84&&!celebOn){celebOn=true;launchFW();gsap.to([cel1,cel2,cel3],{intensity:5,duration:.4});}
-  if(t<.84&&celebOn){celebOn=false;fwAlive=false;fwMat.opacity=0;cel1.intensity=cel2.intensity=cel3.intensity=0;}
-}
-
-/* ══════════════════════════════════════════════════════
-   MAIN LOOP
-══════════════════════════════════════════════════════ */
-let GT=0,ready=false;
-const clock=new THREE.Clock();
-let bloomFrame=0; // render bloom every 2nd frame
-
-function animate(){
-  requestAnimationFrame(animate);
-  if(!ready)return;
-
-  const rawDt=Math.min(clock.getDelta(),.05);
-  timeScale=lerp(timeScale,tgtTS,.055);
-  const dt=rawDt, pDt=rawDt*timeScale;
-  GT+=dt;
-
-  // Camera
-  const want=getCam(scrollT);
-  const sh=tickShake(dt,GT);
-  const PARA=.26;
-  camCur.pos.x=lerp(camCur.pos.x,want.pos.x+mouse.x*PARA+sh.x,.045);
-  camCur.pos.y=lerp(camCur.pos.y,want.pos.y+mouse.y*PARA*.5+sh.y,.045);
-  camCur.pos.z=lerp(camCur.pos.z,want.pos.z+sh.z,.045);
-  camCur.tgt.x=lerp(camCur.tgt.x,want.tgt.x,.042);
-  camCur.tgt.y=lerp(camCur.tgt.y,want.tgt.y,.042);
-  camCur.tgt.z=lerp(camCur.tgt.z,want.tgt.z,.042);
-  camera.position.copy(camCur.pos);
-  camera.lookAt(camCur.tgt);
-
-  if(!physOn)trayGroup.rotation.y=GT*.08;
-
-  // Cookie wave (scene 2-3)
-  if(scrollT>.25&&scrollT<.55&&!physOn){
-    cookieObjects.forEach((o,i)=>{o.mesh.position.y=o.origPos.y+Math.sin(GT*1.4+i*.7)*.045;o.mesh.rotation.z=o.origRot.z+Math.sin(GT*.9+i*.5)*.016;});
-  }
-
-  // Dust
-  for(let i=0;i<DUST;i++){
-    dPos[i*3+1]+=Math.sin(GT*.6+dPhase[i])*.0016;
-    dPos[i*3]  +=Math.cos(GT*.4+dPhase[i])*.0011;
-    if(dPos[i*3+1]>8)dPos[i*3+1]-=16;
-  }
-  dustGeo.attributes.position.needsUpdate=true;
-
-  tickPhysics(timeScale);
-  tickFW(timeScale);
-  tickFlicker(dt);
-  updateScene(scrollT,dt);
-  key.position.x=Math.sin(GT*.22)*2.2+4;
-
-  // Main render
-  renderer.render(scene,camera);
-
-  // Bloom render (every other frame, half-res — cheap)
-  bloomFrame++;
-  if(bloomFrame%2===0 && atm.bloomOp>0.02){
-    bloomRenderer.render(scene,camera);
-  }
-}
-
-/* ══════════════════════════════════════════════════════
-   CURSOR
-══════════════════════════════════════════════════════ */
-const cur=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
-let cx=innerWidth/2,cy=innerHeight/2,rx=cx,ry=cy;
-document.addEventListener('mousemove',e=>{cx=e.clientX;cy=e.clientY;});
-function tickCursor(){
-  cur.style.left=cx+'px';cur.style.top=cy+'px';
-  rx=lerp(rx,cx,.1);ry=lerp(ry,cy,.1);
+// ==================== CURSOR ====================
+const cur = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX;my=e.clientY;
+  cur.style.left=mx+'px';cur.style.top=my+'px';
+});
+(function ringLoop(){
+  rx+=(mx-rx)*.1;ry+=(my-ry)*.1;
   ring.style.left=rx+'px';ring.style.top=ry+'px';
-  requestAnimationFrame(tickCursor);
-}
-tickCursor();
+  requestAnimationFrame(ringLoop);
+})();
 
-window.addEventListener('resize',()=>{
-  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight);
-  bloomRenderer.setSize(Math.round(innerWidth/2),Math.round(innerHeight/2));
+// ==================== THREE.JS ====================
+const cv = document.getElementById('c3');
+const scene = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,100);
+cam.position.z=9;
+
+const renderer = new THREE.WebGLRenderer({canvas:cv,alpha:true,antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setClearColor(0,0);
+
+// Lights
+const al = new THREE.AmbientLight(0xfff8f0,1.1);
+scene.add(al);
+const dl = new THREE.DirectionalLight(0xffe8c0,1.8);
+dl.position.set(6,8,7);scene.add(dl);
+const fl = new THREE.DirectionalLight(0xfff0e8,.5);
+fl.position.set(-5,-3,5);scene.add(fl);
+const pl = new THREE.PointLight(0xffd090,.8,20);
+pl.position.set(0,0,6);scene.add(pl);
+
+// Ka7k colors — warm bakery palette
+const pal=[0xEDD5A8,0xD9B07A,0xC89060,0xE8C898,0xF0DEB8,0xCDA070,0xDEC090];
+
+function makeKa7k(px,py,pz,sc){
+  const g=new THREE.Group();
+  
+  // body
+  const bg=new THREE.TorusGeometry(1,.36,20,80);
+  const bm=new THREE.MeshPhongMaterial({
+    color:pal[Math.floor(Math.random()*pal.length)],
+    shininess:20,
+    specular:new THREE.Color(.3,.2,.1),
+  });
+  g.add(new THREE.Mesh(bg,bm));
+  
+  // sugar dust (semi-transparent white)
+  const sg=new THREE.TorusGeometry(1,.39,20,80);
+  const sm=new THREE.MeshPhongMaterial({
+    color:0xFFFBF5,transparent:true,opacity:.16,shininess:60
+  });
+  g.add(new THREE.Mesh(sg,sm));
+  
+  // scoring lines (thin torus perpendicular)
+  for(let i=0;i<3;i++){
+    const line=new THREE.TorusGeometry(1,.02,8,80);
+    const lm=new THREE.MeshBasicMaterial({color:0xC08040,transparent:true,opacity:.35});
+    const lmesh=new THREE.Mesh(line,lm);
+    lmesh.rotation.z=Math.PI/2;
+    lmesh.rotation.x=i*(Math.PI/4);
+    g.add(lmesh);
+  }
+  
+  g.position.set(px,py,pz);
+  g.scale.setScalar(sc);
+  g.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
+  scene.add(g);
+  
+  return{
+    g,
+    rx:(Math.random()-.5)*.011,
+    ry:(Math.random()-.5)*.016,
+    rz:(Math.random()-.5)*.007,
+    iy:py,
+    fs:Math.random()*.5+.25,
+    fa:Math.random()*.25+.1,
+    fo:Math.random()*Math.PI*2,
+  };
+}
+
+const donuts=[];
+const pts=[
+  [-5.8, 2.8,-1.2,.72],
+  [ 5.2, 3.2,-.8,.88],
+  [-4.5,-3.2,-1.5,.65],
+  [ 4.8,-2.8,-.9,.78],
+  [-6.8,-.5,-2.0,.52],
+  [ 6.3, .8,-1.8,.56],
+  [-2.2, 4.8,-2.2,.62],
+  [ 2.8,-4.6,-1.6,.58],
+  [ .2, 3.8,-3.0,.48],
+  [-3.8, .8,-.6,.92],
+  [ 3.6,-1.2,-.5,.82],
+  [-.4,-3.4,-1.2,.60],
+  [-1.5,-1.5,  1,.45],
+  [ 1.8, 2.2,  .5,.50],
+];
+pts.forEach(([x,y,z,s])=>donuts.push(makeKa7k(x,y,z,s)));
+
+// scroll & mouse
+let sy=0,lsy=0,vel=0;
+let moX=0,moY=0;
+let t=0;
+
+window.addEventListener('scroll',()=>{
+  const nsy=window.scrollY;
+  vel=nsy-sy;sy=nsy;
+});
+document.addEventListener('mousemove',e=>{
+  moX=(e.clientX/innerWidth-.5)*2;
+  moY=(e.clientY/innerHeight-.5)*2;
 });
 
-/* ══════════════════════════════════════════════════════
-   LOADING
-══════════════════════════════════════════════════════ */
-async function intro(){
-  const ld=document.getElementById('loading');
-  await sleep(400);
-  gsap.to('#lp',{opacity:1,duration:2,ease:'power2.inOut'});
-  await sleep(600);
-  gsap.to('#lbw',{opacity:1,duration:.8});
-  document.getElementById('lb').style.transition='width 1.5s cubic-bezier(.4,0,.2,1)';
-  document.getElementById('lb').style.width='55%';
-  await sleep(900);
-  gsap.to('#lt',{opacity:1,duration:1.5,ease:'power2.inOut'});
-  document.getElementById('lb').style.width='88%';
-  await sleep(1000);
-  document.getElementById('lb').style.width='100%';
-  await sleep(600);
-  gsap.to(ld,{opacity:0,duration:1.8,ease:'power2.inOut',onComplete:()=>{
-    ld.style.display='none'; ready=true; clock.start();
-    gsap.to('#scroll-hint',{opacity:1,duration:1.2,delay:.5});
-    gsap.to('#dots',{opacity:1,duration:1,delay:.7});
-    gsap.to('#scene-label',{opacity:1,duration:1,delay:.7});
-    gsap.to('#mute-btn',{opacity:1,duration:1,delay:1});
-    gsap.to({v:0},{v:1,duration:3.5,delay:.3,ease:'power2.inOut',onUpdate:function(){lightReveal=this.targets()[0].v;}});
-    window.addEventListener('scroll',()=>gsap.to('#scroll-hint',{opacity:0,duration:.7}),{once:true});
-  }});
+function tick(){
+  requestAnimationFrame(tick);
+  t+=.016;
+  vel*=.88;
+  const prog=sy/Math.max(document.body.scrollHeight-innerHeight,1);
+  
+  donuts.forEach(d=>{
+    d.g.rotation.x+=d.rx+(vel*.0008);
+    d.g.rotation.y+=d.ry+(vel*.001);
+    d.g.rotation.z+=d.rz;
+    // float + scroll parallax
+    d.g.position.y=d.iy+Math.sin(t*d.fs+d.fo)*d.fa - prog*4;
+  });
+  
+  // camera breathes with mouse
+  cam.position.x+=(moX*.6-cam.position.x)*.025;
+  cam.position.y+=(-moY*.4-cam.position.y)*.025;
+  cam.lookAt(0,0,0);
+  
+  renderer.render(scene,cam);
+}
+tick();
+
+window.addEventListener('resize',()=>{
+  cam.aspect=innerWidth/innerHeight;
+  cam.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+// ==================== SCROLL REVEALS ====================
+function reveal(ids,cls='on'){
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const ob=new IntersectionObserver(en=>{
+      en.forEach(e=>{if(e.isIntersecting)e.target.classList.add(cls);});
+    },{threshold:.25});
+    ob.observe(el);
+  });
 }
 
-animate();
-intro();
+// Section reveal helpers
+function revealClass(sel){
+  document.querySelectorAll(sel).forEach(el=>{
+    const ob=new IntersectionObserver(en=>{
+      en.forEach(e=>{if(e.isIntersecting)e.target.classList.add('on');});
+    },{threshold:.2});
+    ob.observe(el);
+  });
+}
+
+revealClass('.big-reveal');
+revealClass('.s2-line');
+revealClass('.s3-label');
+revealClass('.ka7ka');
+revealClass('.s4-top');
+revealClass('.s4-msg');
+revealClass('.s4-from');
+revealClass('.s4-hearts');
+
+// ==================== TAKBEER AUTO ====================
+const audio = document.getElementById('takbeer-audio');
+const srcs = [
+  'https://www.islamicfinder.org/prayer/eid_takbeer.mp3',
+  'https://download.quranicaudio.com/muslim/eid_takbeer.mp3',
+];
+let sIdx=0, started=false;
+
+function tryPlay(){
+  audio.src=srcs[sIdx];
+  audio.volume=0;
+  audio.play().then(()=>{
+    let v=0;
+    const fade=setInterval(()=>{
+      v=Math.min(v+0.03,0.75);
+      audio.volume=v;
+      if(v>=0.75)clearInterval(fade);
+    },80);
+  }).catch(()=>{
+    sIdx++;
+    if(sIdx<srcs.length)tryPlay();
+  });
+}
+
+function onFirstScroll(){
+  if(started||window.scrollY<8)return;
+  started=true;
+  tryPlay();
+  window.removeEventListener('scroll',onFirstScroll);
+}
+window.addEventListener('scroll',onFirstScroll);
 </script>
 </body>
 </html>
